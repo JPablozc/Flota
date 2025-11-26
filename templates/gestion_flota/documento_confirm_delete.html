@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>Eliminar documento</h2>
+
+<p>
+  ¿Seguro que deseas eliminar el documento
+  <strong>{{ documento.tipo.nombre }}</strong>
+  del vehículo <strong>{{ vehiculo.placa }}</strong>?
+</p>
+
+<form method="post" class="mt-3">
+  {% csrf_token %}
+  <button type="submit" class="btn btn-danger">Sí, eliminar</button>
+  <a href="{% url 'vehiculo_detail' vehiculo.pk %}" class="btn btn-secondary">Cancelar</a>
+</form>
+{% endblock %}
