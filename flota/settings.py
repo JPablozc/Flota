@@ -3,7 +3,7 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'cambia-esto-por-una-clave-segura'
+SECRET_KEY = 'mo!k+0zx@ns7b6v_^++3iu)7-7g4_(ju+!)od==5$c085jvs7w'
 DEBUG = True
 ALLOWED_HOSTS = []
 
@@ -98,4 +98,8 @@ ALERTAS_EMAIL_DESTINO = 'tu.correo@miempresa.com'
 
 DEBUG = os.environ.get("DEBUG", "True") == "True"
 
-ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
+ALLOWED_HOSTS = [
+    "flota-o3i2.onrender.com",
+    "127.0.0.1",
+    "localhost",
+]
