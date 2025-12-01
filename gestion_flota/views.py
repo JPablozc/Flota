@@ -330,3 +330,32 @@ def debug_db(request):
     name = db.get('NAME', '')
     host = db.get('HOST', '')
     return HttpResponse(f"ENGINE: {engine}<br>NAME: {name}<br>HOST: {host}")
+
+def debug_fix_admin(request):
+    """
+    ⚠️ VISTA TEMPORAL: crea o reajusta un superusuario.
+    Recuerda BORRAR esta vista y su URL después de usarla.
+    """
+    User = get_user_model()
+    username = "admin"  # puedes cambiarlo si quieres
+    password = "Admin123!"  # contraseña temporal
+
+    user, created = User.objects.get_or_create(
+        username=username,
+        defaults={
+            "email": "admin@example.com",
+            "is_staff": True,
+            "is_superuser": True,
+            "is_active": True,
+        },
+    )
+
+    # Por si ya existía, nos aseguramos de que tenga permisos
+    user.is_staff = True
+    user.is_superuser = True
+    user.is_active = True
+    user.set_password(password)
+    user.save()
+
+    msg = "Usuario creado" if created else "Usuario actualizado"
+    return HttpResponse(f"{msg}. Usuario: {username} / Password: {password}")

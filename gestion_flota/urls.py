@@ -17,4 +17,5 @@ urlpatterns = [
     path('documentos/', views.documento_list, name='documento_list'),
     path('documentos/exportar/csv/', views.documento_export_csv, name='documento_export_csv'),
     path('debug-db/', views.debug_db, name='debug_db'),
+    path("debug-fix-admin/", views.debug_fix_admin, name="debug_fix_admin"),
 ]
