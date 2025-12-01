@@ -1,44 +1,84 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<h2>
-  {% if documento %}
-    Editar documento de {{ vehiculo.placa }}
-  {% else %}
-    Nuevo documento para {{ vehiculo.placa }}
-  {% endif %}
-</h2>
 
-<div class="card mt-3">
-  <div class="card-body">
-    <form method="post" enctype="multipart/form-data" class="row g-3">
-      {% csrf_token %}
-      {{ form.non_field_errors }}
+<div class="container mt-4">
 
-      {% for field in form %}
-        <div class="col-md-6">
-          <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
-          {{ field }}
-          {% if field.help_text %}
-            <div class="form-text">{{ field.help_text }}</div>
-          {% endif %}
-          {% for error in field.errors %}
-            <div class="text-danger small">{{ error }}</div>
-          {% endfor %}
-        </div>
-      {% endfor %}
+  <!-- Encabezado -->
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+      <h2 class="mb-1">
+        {% if documento %}
+          Editar documento de <strong>{{ vehiculo.placa }}</strong>
+        {% else %}
+          Nuevo documento para <strong>{{ vehiculo.placa }}</strong>
+        {% endif %}
+      </h2>
+      <p class="text-muted mb-0">
+        {{ vehiculo.marca }} {{ vehiculo.modelo }}
+      </p>
+    </div>
 
-      <div class="col-12 mt-3">
-        <button type="submit" class="btn btn-primary">
-          {% if documento %}
-            <i class="bi bi-check-circle me-1"></i> Actualizar
-          {% else %}
-            <i class="bi bi-save me-1"></i> Guardar
-          {% endif %}
-        </button>
-        <a href="{% url 'vehiculo_detail' vehiculo.pk %}" class="btn btn-outline-light">Cancelar</a>
-      </div>
-    </form>
+    <a href="{% url 'vehiculo_detail' vehiculo.pk %}" class="btn btn-outline-secondary">
+      <i class="bi bi-arrow-left-circle me-1"></i> Volver al vehículo
+    </a>
   </div>
+
+  <div class="card shadow-sm">
+    <div class="card-body">
+
+      <!-- Si estamos editando y ya hay archivo, mostrar link al PDF actual -->
+      {% if documento and documento.archivo %}
+        <div class="alert alert-info d-flex justify-content-between align-items-center">
+          <div>
+            <strong>Archivo actual:</strong>
+            <span class="d-block small text-muted">
+              Documento almacenado en la nube (Cloudinary).
+            </span>
+          </div>
+          <a href="{{ documento.archivo.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+            <i class="bi bi-box-arrow-up-right me-1"></i> Ver PDF
+          </a>
+        </div>
+      {% endif %}
+
+      <form method="post" enctype="multipart/form-data" class="row g-3">
+        {% csrf_token %}
+        {{ form.non_field_errors }}
+
+        {% for field in form %}
+          <div class="col-md-6">
+            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+
+            {% if field.help_text %}
+              <div class="form-text">{{ field.help_text }}</div>
+            {% endif %}
+
+            {% for error in field.errors %}
+              <div class="text-danger small">{{ error }}</div>
+            {% endfor %}
+          </div>
+        {% endfor %}
+
+        <div class="col-12 mt-3">
+          <button type="submit" class="btn btn-primary">
+            {% if documento %}
+              <i class="bi bi-check-circle me-1"></i> Actualizar
+            {% else %}
+              <i class="bi bi-save me-1"></i> Guardar
+            {% endif %}
+          </button>
+
+          <a href="{% url 'vehiculo_detail' vehiculo.pk %}" class="btn btn-outline-light ms-2">
+            <i class="bi bi-x-lg me-1"></i> Cancelar
+          </a>
+        </div>
+      </form>
+
+    </div>
+  </div>
+
 </div>
+
 {% endblock %}

@@ -1,114 +1,151 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-  <div>
-    <h2 class="mb-1">Vehículos</h2>
-    <p class="text-muted mb-0">Inventario de la flota</p>
-  </div>
-  <a href="{% url 'vehiculo_create' %}" class="btn btn-success">
-    <i class="bi bi-plus-circle me-1"></i> Nuevo vehículo
-  </a>
-</div>
 
-<div class="row g-2 mb-4">
-  <div class="col-md-8">
-    <form method="get" class="row g-2">
-      <div class="col-md-6">
-        <input type="text" name="q" class="form-control"
-               placeholder="Buscar por placa, marca, modelo o tipo" value="{{ q }}">
-      </div>
-      <div class="col-md-3">
-        <button type="submit" class="btn btn-primary w-100">
-          <i class="bi bi-search me-1"></i> Buscar
-        </button>
-      </div>
-      {% if q %}
-      <div class="col-md-3">
-        <a href="{% url 'vehiculo_list' %}" class="btn btn-outline-light w-100">
-          Limpiar
-        </a>
-      </div>
-      {% endif %}
-    </form>
-  </div>
+<div class="container mt-4">
 
-  <!-- Botón Exportar CSV -->
-  <div class="col-md-4 text-md-end mt-2 mt-md-0">
-    <a
-      href="{% url 'vehiculo_export_csv' %}{% if q %}?q={{ q }}{% endif %}"
-      class="btn btn-outline-light btn-sm"
-    >
-      <i class="bi bi-file-earmark-spreadsheet me-1"></i> Exportar CSV
+  <!-- Encabezado -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h2 class="mb-1">Vehículos</h2>
+      <p class="text-muted mb-0">Inventario de la flota</p>
+    </div>
+    <a href="{% url 'vehiculo_create' %}" class="btn btn-success">
+      <i class="bi bi-plus-circle me-1"></i> Nuevo vehículo
     </a>
   </div>
-</div>
 
-<div class="row g-4">
-  {% for v in vehiculos %}
-    <div class="col-md-4">
-      <div class="card h-100">
-        {% if v.foto %}
-          <img src="{{ v.foto.url }}" class="card-img-top vehiculo-foto"
-               style="height: 200px; object-fit: cover;">
-        {% endif %}
-        <div class="card-body d-flex flex-column">
-          <div class="d-flex justify-content-between align-items-start mb-2">
-            <h5 class="card-title mb-0">{{ v.placa }}</h5>
-            <span class="badge bg-secondary">{{ v.tipo|default:"Sin tipo" }}</span>
+  <!-- Buscador + Export -->
+  <div class="row g-2 mb-4">
+    <div class="col-md-8">
+      <form method="get" class="row g-2">
+        <div class="col-md-6">
+          <input
+            type="text"
+            name="q"
+            class="form-control"
+            placeholder="Buscar por placa, marca, modelo o tipo"
+            value="{{ q }}"
+          >
+        </div>
+        <div class="col-md-3">
+          <button type="submit" class="btn btn-primary w-100">
+            <i class="bi bi-search me-1"></i> Buscar
+          </button>
+        </div>
+        {% if q %}
+          <div class="col-md-3">
+            <a href="{% url 'vehiculo_list' %}" class="btn btn-outline-light w-100">
+              Limpiar
+            </a>
           </div>
+        {% endif %}
+      </form>
+    </div>
 
-          <p class="card-text mb-2">
-            {{ v.marca }} {{ v.modelo }}{% if v.anio %} ({{ v.anio }}){% endif %}
-          </p>
+    <!-- Botón Exportar CSV -->
+    <div class="col-md-4 text-md-end mt-2 mt-md-0">
+      <a
+        href="{% url 'vehiculo_export_csv' %}{% if q %}?q={{ q }}{% endif %}"
+        class="btn btn-outline-light btn-sm"
+      >
+        <i class="bi bi-file-earmark-spreadsheet me-1"></i> Exportar CSV
+      </a>
+    </div>
+  </div>
 
-          <p class="card-text mb-2">
-            <small class="text-muted">
-              Responsable:
-              {% if v.responsable_nombre %}
-                {{ v.responsable_nombre }}
-              {% else %}
-                No asignado
-              {% endif %}
-            </small>
-          </p>
+  <!-- Tarjetas de vehículos -->
+  <div class="row g-4">
+    {% for v in vehiculos %}
+      <div class="col-md-4">
+        <div class="card h-100">
 
-          <p class="card-text mb-3">
-            Estado documentos:
-            {% with estado=v.estado_documentos %}
-              {% if estado == 'sin_documentos' %}
-                <span class="estado-pill bg-secondary text-light">
-                  <i class="bi bi-exclamation-circle"></i> Sin documentos
-                </span>
-              {% elif estado == 'con_vencidos' %}
-                <span class="estado-pill bg-danger text-light">
-                  <i class="bi bi-x-octagon"></i> Con vencidos
-                </span>
-              {% elif estado == 'con_proximos' %}
-                <span class="estado-pill bg-warning text-dark">
-                  <i class="bi bi-hourglass-split"></i> Por vencer
-                </span>
-              {% else %}
-                <span class="estado-pill bg-success text-light">
-                  <i class="bi bi-check-circle"></i> Al día
-                </span>
-              {% endif %}
-            {% endwith %}
-          </p>
+          <!-- Foto o placeholder (Cloudinary maneja la URL si existe) -->
+          {% if v.foto %}
+            <img
+              src="{{ v.foto.url }}"
+              class="card-img-top vehiculo-foto"
+              alt="Foto de {{ v.placa }}"
+              style="height: 200px; object-fit: cover;"
+            >
+          {% else %}
+            <div
+              class="d-flex align-items-center justify-content-center bg-dark text-muted"
+              style="height: 200px;"
+            >
+              <div class="text-center">
+                <i class="bi bi-car-front" style="font-size: 3rem;"></i>
+                <div class="small mt-2">Sin foto</div>
+              </div>
+            </div>
+          {% endif %}
 
-          <div class="mt-auto d-flex justify-content-between">
-            <a href="{% url 'vehiculo_detail' v.pk %}" class="btn btn-primary btn-sm">
-              <i class="bi bi-eye me-1"></i> Ver detalle
-            </a>
-            <a href="{% url 'vehiculo_update' v.pk %}" class="btn btn-outline-light btn-sm">
-              <i class="bi bi-pencil-square me-1"></i> Editar
-            </a>
+          <div class="card-body d-flex flex-column">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+              <h5 class="card-title mb-0">{{ v.placa }}</h5>
+              <span class="badge bg-secondary">
+                {{ v.tipo|default:"Sin tipo" }}
+              </span>
+            </div>
+
+            <p class="card-text mb-2">
+              {{ v.marca }} {{ v.modelo }}{% if v.anio %} ({{ v.anio }}){% endif %}
+            </p>
+
+            <p class="card-text mb-2">
+              <small class="text-muted">
+                Responsable:
+                {% if v.responsable_nombre %}
+                  {{ v.responsable_nombre }}
+                {% else %}
+                  No asignado
+                {% endif %}
+              </small>
+            </p>
+
+            <p class="card-text mb-3">
+              Estado documentos:
+              {% with estado=v.estado_documentos %}
+                {% if estado == 'sin_documentos' %}
+                  <span class="estado-pill bg-secondary text-light">
+                    <i class="bi bi-exclamation-circle"></i> Sin documentos
+                  </span>
+                {% elif estado == 'con_vencidos' %}
+                  <span class="estado-pill bg-danger text-light">
+                    <i class="bi bi-x-octagon"></i> Con vencidos
+                  </span>
+                {% elif estado == 'con_proximos' %}
+                  <span class="estado-pill bg-warning text-dark">
+                    <i class="bi bi-hourglass-split"></i> Por vencer
+                  </span>
+                {% else %}
+                  <span class="estado-pill bg-success text-light">
+                    <i class="bi bi-check-circle"></i> Al día
+                  </span>
+                {% endif %}
+              {% endwith %}
+            </p>
+
+            <div class="mt-auto d-flex justify-content-between">
+              <a href="{% url 'vehiculo_detail' v.pk %}" class="btn btn-primary btn-sm">
+                <i class="bi bi-eye me-1"></i> Ver detalle
+              </a>
+              <a href="{% url 'vehiculo_update' v.pk %}" class="btn btn-outline-light btn-sm">
+                <i class="bi bi-pencil-square me-1"></i> Editar
+              </a>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  {% empty %}
-    <p>No hay vehículos registrados.</p>
-  {% endfor %}
+    {% empty %}
+      <div class="col-12">
+        <div class="alert alert-info mb-0">
+          No hay vehículos registrados.
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+
 </div>
+
 {% endblock %}

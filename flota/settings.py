@@ -1,26 +1,63 @@
 import os
 from pathlib import Path
+
 import dj_database_url
+
+# =========================
+# Paths base
+# =========================
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'mo!k+0zx@ns7b6v_^++3iu)7-7g4_(ju+!)od==5$c085jvs7w'
-DEBUG = True
-ALLOWED_HOSTS = []
+# =========================
+# Seguridad / entorno
+# =========================
+
+# En producción pon SECRET_KEY en variables de entorno
+SECRET_KEY = os.environ.get(
+    "SECRET_KEY",
+    "cambia-esta-clave-en-produccion"
+)
+
+# DEBUG a partir de variable de entorno
+DEBUG = os.environ.get("DEBUG", "True") == "True"
+
+ALLOWED_HOSTS = [
+    "flota-o3i2.onrender.com",
+    "127.0.0.1",
+    "localhost",
+]
+
+
+# =========================
+# Apps
+# =========================
 
 INSTALLED_APPS = [
+    # Django
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'gestion_flota',  # 👈 nuestra app
+
+    # Terceros
+    'cloudinary',
+    'cloudinary_storage',
+
+    # App local
+    'gestion_flota',
 ]
+
+
+# =========================
+# Middleware
+# =========================
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',  # 👈 aquí
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # WhiteNoise para static files
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -29,14 +66,19 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+# =========================
+# URLs / WSGI
+# =========================
 
 ROOT_URLCONF = 'flota.urls'
 
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'],  # 👈 carpeta global de templates
+        'DIRS': [
+            BASE_DIR / 'templates',  # carpeta global de templates
+        ],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -51,19 +93,29 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'flota.wsgi.application'
 
+
+# =========================
+# Base de datos
+# =========================
+
 if os.environ.get("DATABASE_URL"):
     # Producción: usar PostgreSQL
     DATABASES = {
         'default': dj_database_url.parse(os.environ["DATABASE_URL"])
     }
 else:
-    # Desarrollo local: seguir con SQLite
+    # Desarrollo local: SQLite
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
             "NAME": BASE_DIR / "db.sqlite3",
         }
     }
+
+
+# =========================
+# Password validators
+# =========================
 
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -80,38 +132,73 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+
+# =========================
+# Internacionalización
+# =========================
+
 LANGUAGE_CODE = 'es-co'
 TIME_ZONE = 'America/Bogota'
 USE_I18N = True
 USE_TZ = True
 
+
+# =========================
+# Static files (CSS, JS, imágenes estáticas)
+# =========================
+
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# Carpeta de static en desarrollo (tu Bootstrap, JS, etc.)
 STATICFILES_DIRS = [
     BASE_DIR / 'static',
 ]
 
+# WhiteNoise: sirve static comprimido y con hash de contenido
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+
+# =========================
+# Media files (subidas por el usuario) -> Cloudinary
+# =========================
+
+# CLOUDINARY_URL debe venir del entorno (Render + local)
+CLOUDINARY_URL = os.environ.get("CLOUDINARY_URL")
+
+# Fuerza HTTPS en las URLs de Cloudinary si está definido
+os.environ.setdefault("CLOUDINARY_SECURE", "True")
+
+# Todos los FileField / ImageField usan Cloudinary
+DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+
+# Django sigue usando estos valores, pero el storage genera URLs de Cloudinary
 MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+
+# =========================
+# Config general
+# =========================
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Login
+
+# =========================
+# Login / autenticación
+# =========================
+
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'dashboard'
 LOGOUT_REDIRECT_URL = 'login'
 
-# --- Email (desarrollo) ---
+
+# =========================
+# Email (desarrollo)
+# =========================
+
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 DEFAULT_FROM_EMAIL = 'flotadmin@miempresa.com'
 
 # Correo al que llegarán las alertas
 ALERTAS_EMAIL_DESTINO = 'tu.correo@miempresa.com'
-
-DEBUG = os.environ.get("DEBUG", "True") == "True"
-
-ALLOWED_HOSTS = [
-    "flota-o3i2.onrender.com",
-    "127.0.0.1",
-    "localhost",
-]

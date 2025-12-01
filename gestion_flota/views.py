@@ -1,28 +1,30 @@
 from datetime import date, timedelta
+import csv
 
+from django.conf import settings
 from django.contrib.auth.decorators import login_required
-from django.utils.decorators import method_decorator
-from django.shortcuts import render, get_object_or_404, redirect
-from django.views.generic import ListView, DetailView
+from django.contrib.auth.models import User
 from django.db.models import Q
+from django.http import HttpResponse, HttpResponseForbidden
+from django.shortcuts import render, get_object_or_404, redirect
+from django.utils.decorators import method_decorator
+from django.views.generic import ListView, DetailView
 
 from .models import Vehiculo, DocumentoVehiculo
 from .forms import VehiculoForm, DocumentoVehiculoForm
-
-from django.http import HttpResponseForbidden
 from .permissions import user_is_operador, user_is_admin
 
-import csv
-from django.http import HttpResponse
-from django.conf import settings
-from django.contrib.auth.models import User
+
+# =========================
+# Dashboard
+# =========================
 
 @login_required
 def dashboard(request):
     hoy = date.today()
     proximos = DocumentoVehiculo.objects.filter(
         fecha_vencimiento__gte=hoy,
-        fecha_vencimiento__lte=hoy + timedelta(days=30)
+        fecha_vencimiento__lte=hoy + timedelta(days=30),
     )
     vencidos = DocumentoVehiculo.objects.filter(
         fecha_vencimiento__lt=hoy
@@ -36,6 +38,10 @@ def dashboard(request):
     }
     return render(request, 'gestion_flota/dashboard.html', context)
 
+
+# =========================
+# Vehículos
+# =========================
 
 @method_decorator(login_required, name='dispatch')
 class VehiculoListView(ListView):
@@ -83,7 +89,11 @@ def vehiculo_create(request):
             return redirect('vehiculo_detail', pk=vehiculo.pk)
     else:
         form = VehiculoForm()
-    return render(request, 'gestion_flota/vehiculo_form.html', {'form': form})
+
+    context = {
+        'form': form,
+    }
+    return render(request, 'gestion_flota/vehiculo_form.html', context)
 
 
 @login_required
@@ -100,8 +110,17 @@ def vehiculo_update(request, pk):
             return redirect('vehiculo_detail', pk=vehiculo.pk)
     else:
         form = VehiculoForm(instance=vehiculo)
-    return render(request, 'gestion_flota/vehiculo_form.html', {'form': form, 'vehiculo': vehiculo})
 
+    context = {
+        'form': form,
+        'vehiculo': vehiculo,
+    }
+    return render(request, 'gestion_flota/vehiculo_form.html', context)
+
+
+# =========================
+# Documentos de vehículo
+# =========================
 
 @login_required
 def documento_create(request, vehiculo_id):
@@ -119,7 +138,12 @@ def documento_create(request, vehiculo_id):
             return redirect('vehiculo_detail', pk=vehiculo.pk)
     else:
         form = DocumentoVehiculoForm()
-    return render(request, 'gestion_flota/documento_form.html', {'form': form, 'vehiculo': vehiculo})
+
+    context = {
+        'form': form,
+        'vehiculo': vehiculo,
+    }
+    return render(request, 'gestion_flota/documento_form.html', context)
 
 
 @login_required
@@ -148,18 +172,88 @@ def documento_update(request, pk):
     }
     return render(request, 'gestion_flota/documento_form.html', context)
 
+
+@login_required
+def documento_delete(request, pk):
+    """
+    Eliminar un documento (con pantalla de confirmación)
+    """
+    doc = get_object_or_404(DocumentoVehiculo, pk=pk)
+    vehiculo = doc.vehiculo
+
+    if not user_is_admin(request.user):
+        return HttpResponseForbidden("Solo un administrador puede eliminar documentos.")
+
+    if request.method == 'POST':
+        doc.delete()
+        return redirect('vehiculo_detail', pk=vehiculo.pk)
+
+    context = {
+        'vehiculo': vehiculo,
+        'documento': doc,
+    }
+    return render(request, 'gestion_flota/documento_confirm_delete.html', context)
+
+
+@login_required
+def documento_list(request):
+    """
+    Listado filtrable de documentos:
+    ?estado=vencidos|proximos|vigentes
+    """
+    hoy = date.today()
+    dias_alerta = 30
+    estado = request.GET.get('estado')  # 'vencidos', 'proximos', 'vigentes' o None
+
+    docs = DocumentoVehiculo.objects.select_related('vehiculo', 'tipo')
+
+    if estado == 'vencidos':
+        docs = docs.filter(fecha_vencimiento__lt=hoy)
+    elif estado == 'proximos':
+        docs = docs.filter(
+            fecha_vencimiento__gte=hoy,
+            fecha_vencimiento__lte=hoy + timedelta(days=dias_alerta),
+        )
+    elif estado == 'vigentes':
+        docs = docs.filter(
+            fecha_vencimiento__gt=hoy + timedelta(days=dias_alerta),
+        )
+    # si no hay estado, mostramos todo
+
+    total_vencidos = DocumentoVehiculo.objects.filter(fecha_vencimiento__lt=hoy).count()
+    total_proximos = DocumentoVehiculo.objects.filter(
+        fecha_vencimiento__gte=hoy,
+        fecha_vencimiento__lte=hoy + timedelta(days=dias_alerta),
+    ).count()
+    total_vigentes = DocumentoVehiculo.objects.filter(
+        fecha_vencimiento__gt=hoy + timedelta(days=dias_alerta),
+    ).count()
+    total_todos = DocumentoVehiculo.objects.count()
+
+    context = {
+        'documentos': docs.order_by('fecha_vencimiento'),
+        'estado': estado,
+        'total_vencidos': total_vencidos,
+        'total_proximos': total_proximos,
+        'total_vigentes': total_vigentes,
+        'total_todos': total_todos,
+    }
+    return render(request, 'gestion_flota/documento_list.html', context)
+
+
+# =========================
+# Export CSV
+# =========================
+
 @login_required
 def vehiculo_export_csv(request):
     """
     Exporta los vehículos a CSV, respetando el filtro de búsqueda 'q'.
     """
-    from .models import Vehiculo  # por si no está ya importado arriba
-
     q = request.GET.get('q')
 
     qs = Vehiculo.objects.filter(activo=True).order_by('placa')
     if q:
-        from django.db.models import Q
         qs = qs.filter(
             Q(placa__icontains=q) |
             Q(marca__icontains=q) |
@@ -169,7 +263,9 @@ def vehiculo_export_csv(request):
 
     response = HttpResponse(content_type='text/csv')
     nombre_filtro = q if q else "todos"
-    response['Content-Disposition'] = f'attachment; filename="vehiculos_flota_{nombre_filtro}.csv"'
+    response['Content-Disposition'] = (
+        f'attachment; filename="vehiculos_flota_{nombre_filtro}.csv"'
+    )
 
     writer = csv.writer(response)
     # Encabezados
@@ -198,6 +294,7 @@ def vehiculo_export_csv(request):
 
     return response
 
+
 @login_required
 def documento_export_csv(request):
     """
@@ -215,17 +312,18 @@ def documento_export_csv(request):
     elif estado == 'proximos':
         docs = docs.filter(
             fecha_vencimiento__gte=hoy,
-            fecha_vencimiento__lte=hoy + timedelta(days=dias_alerta)
+            fecha_vencimiento__lte=hoy + timedelta(days=dias_alerta),
         )
     elif estado == 'vigentes':
         docs = docs.filter(
-            fecha_vencimiento__gt=hoy + timedelta(days=dias_alerta)
+            fecha_vencimiento__gt=hoy + timedelta(days=dias_alerta),
         )
 
-    # Preparamos la respuesta HTTP como archivo CSV
     nombre_filtro = estado if estado else "todos"
     response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = f'attachment; filename="documentos_flota_{nombre_filtro}.csv"'
+    response['Content-Disposition'] = (
+        f'attachment; filename="documentos_flota_{nombre_filtro}.csv"'
+    )
 
     writer = csv.writer(response)
     # Encabezados
@@ -252,84 +350,22 @@ def documento_export_csv(request):
 
     return response
 
-@login_required
-def documento_delete(request, pk):
-    """
-    Eliminar un documento (con pantalla de confirmación)
-    """
-    doc = get_object_or_404(DocumentoVehiculo, pk=pk)
-    vehiculo = doc.vehiculo
 
-    if not user_is_admin(request.user):
-        return HttpResponseForbidden("Solo un administrador puede eliminar documentos.")
-
-    if request.method == 'POST':
-        doc.delete()
-        return redirect('vehiculo_detail', pk=vehiculo.pk)
-
-    context = {
-        'vehiculo': vehiculo,
-        'documento': doc,
-    }
-    return render(request, 'gestion_flota/documento_confirm_delete.html', context)
-
-from datetime import date, timedelta
-# ya debes tener este import arriba, si no, asegúrate de que esté
-
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import render
-from .models import DocumentoVehiculo
-
-# ... (el resto de vistas que ya tienes)
+# =========================
+# Vistas de depuración (usar solo temporalmente)
+# =========================
 
 @login_required
-def documento_list(request):
-    hoy = date.today()
-    dias_alerta = 30
-
-    estado = request.GET.get('estado')  # 'vencidos', 'proximos', 'vigentes' o None
-
-    docs = DocumentoVehiculo.objects.select_related('vehiculo', 'tipo')
-
-    if estado == 'vencidos':
-        docs = docs.filter(fecha_vencimiento__lt=hoy)
-    elif estado == 'proximos':
-        docs = docs.filter(
-            fecha_vencimiento__gte=hoy,
-            fecha_vencimiento__lte=hoy + timedelta(days=dias_alerta)
-        )
-    elif estado == 'vigentes':
-        docs = docs.filter(
-            fecha_vencimiento__gt=hoy + timedelta(days=dias_alerta)
-        )
-    # si no hay estado, mostramos todo
-
-    total_vencidos = DocumentoVehiculo.objects.filter(fecha_vencimiento__lt=hoy).count()
-    total_proximos = DocumentoVehiculo.objects.filter(
-        fecha_vencimiento__gte=hoy,
-        fecha_vencimiento__lte=hoy + timedelta(days=dias_alerta)
-    ).count()
-    total_vigentes = DocumentoVehiculo.objects.filter(
-        fecha_vencimiento__gt=hoy + timedelta(days=dias_alerta)
-    ).count()
-    total_todos = DocumentoVehiculo.objects.count()
-
-    context = {
-        'documentos': docs.order_by('fecha_vencimiento'),
-        'estado': estado,
-        'total_vencidos': total_vencidos,
-        'total_proximos': total_proximos,
-        'total_vigentes': total_vigentes,
-        'total_todos': total_todos,
-    }
-    return render(request, 'gestion_flota/documento_list.html', context)
-
 def debug_db(request):
+    """
+    Muestra info básica de la DB actual. Eliminar en producción.
+    """
     db = settings.DATABASES['default']
     engine = db['ENGINE']
     name = db.get('NAME', '')
     host = db.get('HOST', '')
     return HttpResponse(f"ENGINE: {engine}<br>NAME: {name}<br>HOST: {host}")
+
 
 def debug_fix_admin(request):
     """
@@ -360,5 +396,4 @@ def debug_fix_admin(request):
         msg = "Usuario creado" if created else "Usuario actualizado"
         return HttpResponse(f"{msg}. Usuario: {username} / Password: {password}")
     except Exception as e:
-        # Para ver el error en vez de un 500 genérico
         return HttpResponse(f"ERROR en debug_fix_admin: {e}", status=500)
