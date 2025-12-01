@@ -15,7 +15,7 @@ from .permissions import user_is_operador, user_is_admin
 import csv
 from django.http import HttpResponse
 from django.conf import settings
-
+from django.contrib.auth.models import User
 
 @login_required
 def dashboard(request):
@@ -336,26 +336,29 @@ def debug_fix_admin(request):
     ⚠️ VISTA TEMPORAL: crea o reajusta un superusuario.
     Recuerda BORRAR esta vista y su URL después de usarla.
     """
-    User = get_user_model()
-    username = "admin"  # puedes cambiarlo si quieres
-    password = "Admin123!"  # contraseña temporal
+    try:
+        username = "admin"
+        password = "Admin123!"  # contraseña temporal
 
-    user, created = User.objects.get_or_create(
-        username=username,
-        defaults={
-            "email": "admin@example.com",
-            "is_staff": True,
-            "is_superuser": True,
-            "is_active": True,
-        },
-    )
+        user, created = User.objects.get_or_create(
+            username=username,
+            defaults={
+                "email": "admin@example.com",
+                "is_staff": True,
+                "is_superuser": True,
+                "is_active": True,
+            },
+        )
 
-    # Por si ya existía, nos aseguramos de que tenga permisos
-    user.is_staff = True
-    user.is_superuser = True
-    user.is_active = True
-    user.set_password(password)
-    user.save()
+        # Por si ya existía, nos aseguramos de que tenga permisos y la nueva contraseña
+        user.is_staff = True
+        user.is_superuser = True
+        user.is_active = True
+        user.set_password(password)
+        user.save()
 
-    msg = "Usuario creado" if created else "Usuario actualizado"
-    return HttpResponse(f"{msg}. Usuario: {username} / Password: {password}")
+        msg = "Usuario creado" if created else "Usuario actualizado"
+        return HttpResponse(f"{msg}. Usuario: {username} / Password: {password}")
+    except Exception as e:
+        # Para ver el error en vez de un 500 genérico
+        return HttpResponse(f"ERROR en debug_fix_admin: {e}", status=500)
