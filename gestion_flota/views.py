@@ -14,7 +14,7 @@ from .permissions import user_is_operador, user_is_admin
 
 import csv
 from django.http import HttpResponse
-
+from django.conf import settings
 
 
 @login_required
@@ -323,3 +323,10 @@ def documento_list(request):
         'total_todos': total_todos,
     }
     return render(request, 'gestion_flota/documento_list.html', context)
+
+def debug_db(request):
+    db = settings.DATABASES['default']
+    engine = db['ENGINE']
+    name = db.get('NAME', '')
+    host = db.get('HOST', '')
+    return HttpResponse(f"ENGINE: {engine}<br>NAME: {name}<br>HOST: {host}")
